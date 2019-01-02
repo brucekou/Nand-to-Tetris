@@ -73,7 +73,7 @@
 	D=M
 	@R4
 	A=M+D       // current pixel	
-	M=1
+	M=-1
 	@CONT
 	0;JMP
 (WHITE)
