@@ -4,13 +4,16 @@ import os
 import sys
 import re
 import argparse
+from pathlib import Path
 
 class Parser():
     "Hack assembler language parser program."
     def __init__(self, asm):
         self.symTbl = self._init_symbles()
-        self.src = asm
+        self.src = self._get_abs_path(asm)
         self._var_addr = 16
+        self._lblList = []
+        self._varList = []
 
     def _init_symbles(self):
         "populate the symble table with hack lang native symbles"
@@ -83,11 +86,16 @@ class Parser():
         }
         return sym_table
 
+    def _get_abs_path(self, asm):
+        "handle asm file path"
+        p = os.path.abspath(asm)
+        return p
+
     def _preparse(self):
         "strip all empty lines together with comments, resolve lables, variables"
         lines = []
         index = 0
-        fullsrc = os.path.join(os.getcwd(), self.src)
+        fullsrc = self.src
         if os.path.exists(fullsrc):
             with open(fullsrc, 'r') as f:
                 for line in f:
@@ -97,6 +105,12 @@ class Parser():
                         if (retline):
                             lines.append(retline)
                             index += 1
+            # variables mem allocation
+            for item in self._varList:
+                if item not in self._lblList and item not in self.symTbl:
+                    #print("item:%s -%d" % (item, self._var_addr))
+                    self.symTbl[item] = self._var_addr
+                    self._var_addr += 1
 
         else:
             print("ERR: source file not readable")
@@ -110,14 +124,16 @@ class Parser():
         if m:
             label = m.group(1)
             self.symTbl[label] = index
+            self._lblList.append(label)
             return None
         
         m = re.match(r'@([A-Za-z._]+\w+)$', line)
         if m:
             label = m.group(1)
             if label not in self.symTbl:
-                self.symTbl[label] = self._var_addr
-                self._var_addr += 1
+                #self.symTbl[label] = self._var_addr
+                #self._var_addr += 1
+                self._varList.append(label)
                 return line
         return line
 
@@ -183,12 +199,11 @@ class Parser():
         lines = self._preparse()
         if (lines):
             lines = self._code(lines)
-            if (lines):
-                fulldst = os.path.join(os.getcwd(), self.src.replace('asm', 'hack'))
-                with open(fulldst, 'w') as f:
-                    for code in lines:
-                        f.write('%s\n' % code)
-        print("Done")
+            fulldst = self.src.replace('asm', 'hack')
+            with open(fulldst, 'w+') as f:
+                for code in lines:
+                    f.write('%s\n' % code)
+        print("===> Finished Successfully ")
 
 
 if __name__ == '__main__':
